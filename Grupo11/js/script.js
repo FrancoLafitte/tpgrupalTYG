@@ -7,16 +7,37 @@ const URL_TMDB_GENEROS = `https://api.themoviedb.org/3/genre/tv/list?api_key=${A
 const URL_STRAPI =
   "https://gestionweb.frlp.utn.edu.ar/api/g11-populares-series";
 
-// Eventos de botones
+// Variable global para almacenar el mapa de géneros y evitar peticiones repetidas.
+const mapaGeneros = {};
+
+// ========================================================================
+// 2. ASIGNACIÓN DE EVENTOS A LOS BOTONES
+// ========================================================================
+
 document.getElementById("btnCargar").addEventListener("click", cargarDatos);
 document
   .getElementById("btnVisualizar")
   .addEventListener("click", visualizarDatos);
 
+// ========================================================================
+// 3. FUNCIONES DE UTILIDAD Y AYUDA
+// ========================================================================
+
+/**
+ * Extrae el objeto 'attributes' de una respuesta de Strapi.
+ * Las respuestas de Strapi envuelven los datos en un objeto 'attributes'.
+ * @param {object} item - El objeto de la API de Strapi.
+ * @returns {object} - El objeto de datos sin la envoltura 'attributes'.
+ */
 function obtenerAtributos(item) {
   return item.attributes ? item.attributes : item;
 }
 
+/**
+ * Genera los encabezados estándar para las peticiones a la API de Strapi.
+ * Incluye el tipo de contenido y el token de autorización.
+ * @returns {object} - Un objeto con los encabezados HTTP.
+ */
 function strapiHeaders() {
   return {
     "Content-Type": "application/json",
@@ -24,8 +45,10 @@ function strapiHeaders() {
   };
 }
 
-const mapaGeneros = {};
-
+/**
+ * Obtiene y cachea el mapa de géneros desde TMDB.
+ * Si los géneros ya fueron cargados, los devuelve desde la caché.
+ */
 async function cargarMapaGeneros() {
   if (Object.keys(mapaGeneros).length) {
     return mapaGeneros;
@@ -44,6 +67,11 @@ async function cargarMapaGeneros() {
   return mapaGeneros;
 }
 
+/**
+ * Convierte un array de IDs de género en una cadena de texto con los nombres.
+ * @param {number[]} genreIds - Array de IDs de géneros (ej: [28, 12]).
+ * @returns {string} - Una cadena con los nombres de los géneros separados por comas.
+ */
 function traducirGeneros(genreIds) {
   if (!Array.isArray(genreIds) || !genreIds.length) {
     return "N/A";
@@ -57,6 +85,11 @@ function traducirGeneros(genreIds) {
   );
 }
 
+/**
+ * Obtiene el país de origen de una serie, buscando en varios campos posibles.
+ * @param {object} serie - El objeto de la serie.
+ * @returns {string} - El país de origen o "N/A" si no se encuentra.
+ */
 function obtenerPaisOrigen(serie) {
   if (Array.isArray(serie.origin_country) && serie.origin_country.length) {
     return serie.origin_country.join(", ");
@@ -65,6 +98,12 @@ function obtenerPaisOrigen(serie) {
   return serie.paisOrigen || serie.pais_de_origen || serie.country || "N/A";
 }
 
+/**
+ * Obtiene un valor numérico de popularidad de un item, buscando en diferentes
+ * campos posibles para asegurar la compatibilidad entre TMDB y Strapi.
+ * @param {object} item - El objeto de la serie.
+ * @returns {number} - El valor de popularidad.
+ */
 function valorPopularidad(item) {
   const valor =
     item.popularidad ??
@@ -77,10 +116,24 @@ function valorPopularidad(item) {
   return Number(valor) || 0;
 }
 
+/**
+ * Ordena una lista de series por popularidad en orden descendente.
+ * @param {object[]} items - La lista de series a ordenar.
+ * @returns {object[]} - Una nueva lista de series ordenada.
+ */
 function ordenarPorPopularidadDesc(items) {
   return [...items].sort((a, b) => valorPopularidad(b) - valorPopularidad(a));
 }
 
+// ========================================================================
+// 4. FUNCIONES DE RENDERIZADO Y MANEJO DEL DOM
+// ========================================================================
+
+/**
+ * Renderiza una lista de series en el contenedor principal de la página.
+ * @param {string} titulo - El título que se mostrará sobre la lista.
+ * @param {object[]} peliculas - La lista de series a mostrar.
+ */
 function renderizarPeliculas(titulo, peliculas) {
   const contenedor = document.getElementById("contenido");
   contenedor.innerHTML = `<h2>${titulo}</h2>`;
@@ -105,6 +158,11 @@ function renderizarPeliculas(titulo, peliculas) {
   });
 }
 
+/**
+ * Muestra un mensaje de estado (carga, error, etc.) en el contenedor principal.
+ * @param {string} titulo - El título del mensaje.
+ * @param {string} mensaje - El cuerpo del mensaje.
+ */
 function mostrarEstadoCarga(titulo, mensaje) {
   const contenedor = document.getElementById("contenido");
   contenedor.innerHTML = `
@@ -113,6 +171,11 @@ function mostrarEstadoCarga(titulo, mensaje) {
     `;
 }
 
+/**
+ * Genera un mensaje de error descriptivo basado en el objeto de error.
+ * @param {Error} error - El objeto de error capturado en un bloque catch.
+ * @returns {string} - Un mensaje de error para el usuario.
+ */
 function mensajeErrorStrapi(error) {
   const texto = String(error && error.message ? error.message : error || "");
 
@@ -127,6 +190,16 @@ function mensajeErrorStrapi(error) {
   return "No se pudieron cargar los datos desde TMDB o guardar en Strapi.";
 }
 
+// ========================================================================
+// 5. LÓGICA DE NEGOCIO Y LLAMADAS A API
+// ========================================================================
+
+/**
+ * Convierte un objeto de serie de la API de TMDB al formato que espera
+ * nuestra colección de Strapi.
+ * @param {object} serie - El objeto de serie de TMDB.
+ * @returns {object} - Un objeto listo para ser enviado a Strapi.
+ */
 function toStrapiPayload(serie) {
   return {
     titulo: serie.name,
@@ -139,6 +212,10 @@ function toStrapiPayload(serie) {
   };
 }
 
+/**
+ * Obtiene las 10 series más populares de TMDB, las transforma al formato
+ * de Strapi y las devuelve ordenadas.
+ */
 async function obtenerSeriesTMDB() {
   await cargarMapaGeneros();
 
@@ -153,28 +230,58 @@ async function obtenerSeriesTMDB() {
   ).slice(0, 10);
 }
 
+/**
+ * Guarda una lista de series en Strapi.
+ * Envía una petición POST por cada serie de forma paralela.
+ * @param {object[]} series - La lista de series a guardar.
+ */
 async function guardarSeriesEnStrapi(series) {
-  const promesas = series.map((serie) =>
-    fetch(URL_STRAPI, {
-      method: "POST",
-      headers: strapiHeaders(),
-      body: JSON.stringify({ data: serie }),
-    }),
-  );
+  let guardadas = 0;
+  let actualizadas = 0;
 
-  const respuestas = await Promise.all(promesas);
-  return respuestas.filter((r) => r.ok).length;
+  const promesas = series.map(async (serie) => {
+    const serieExistente = await buscarSeriePorTitulo(serie.titulo);
+
+    if (serieExistente) {
+      // Si existe, actualizamos con PUT usando el ID
+      const respuesta = await fetch(`${URL_STRAPI}/${serieExistente.id}`, {
+        method: "PUT",
+        headers: strapiHeaders(),
+        body: JSON.stringify({ data: serie }),
+      });
+
+      if (respuesta.ok) actualizadas++;
+    } else {
+      // Si no existe, creamos con POST
+      const respuesta = await fetch(URL_STRAPI, {
+        method: "POST",
+        headers: strapiHeaders(),
+        body: JSON.stringify({ data: serie }),
+      });
+
+      if (respuesta.ok) guardadas++;
+    }
+  });
+
+  // Esperamos a que todas las operaciones asíncronas terminen
+  await Promise.all(promesas);
+
+  // Retornamos ambos contadores
+  return { guardadas, actualizadas };
 }
 
-// 1. Cargar datos desde TMDB y guardarlos en Strapi
+/**
+ * Orquesta el proceso de carga: obtiene las series de TMDB y las guarda en Strapi.
+ * Es la función que se ejecuta al presionar el botón "Cargar".
+ */
 async function cargarDatos() {
   try {
     const series = await obtenerSeriesTMDB();
-    const guardadas = await guardarSeriesEnStrapi(series);
+    const { guardadas, actualizadas } = await guardarSeriesEnStrapi(series);
 
     mostrarEstadoCarga(
       "Carga completada",
-      `Se guardaron correctamente ${guardadas} series nuevas en Strapi.`,
+      `Se crearon ${guardadas} series nuevas y se actualizaron ${actualizadas} series existentes en Strapi.`,
     );
   } catch (error) {
     console.error("Error al cargar los datos:", error);
@@ -182,7 +289,10 @@ async function cargarDatos() {
   }
 }
 
-// 2. Visualizar las series almacenadas en Strapi
+/**
+ * Obtiene las series guardadas en Strapi y las muestra en la página.
+ * Es la función que se ejecuta al presionar el botón "Visualizar".
+ */
 async function visualizarDatos() {
   try {
     const respuesta = await fetch(
@@ -215,4 +325,25 @@ async function visualizarDatos() {
     document.getElementById("contenido").innerHTML =
       `<h2>Error</h2><p>${mensajeErrorStrapi(error)}</p>`;
   }
+}
+
+// 1. Crear función de búsqueda
+async function buscarSeriePorTitulo(titulo) {
+  const url = `${URL_STRAPI}?filters[titulo][$eq]=${encodeURIComponent(titulo)}`;
+
+  const respuesta = await fetch(url, {
+    method: "GET",
+    headers: strapiHeaders(),
+  });
+
+  if (!respuesta.ok) return null;
+
+  const data = await respuesta.json();
+
+  // Si Strapi devuelve datos en el array, la serie ya existe
+  if (data.data && data.data.length > 0) {
+    return data.data[0];
+  }
+
+  return null;
 }
