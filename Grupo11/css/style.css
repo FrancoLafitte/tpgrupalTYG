@@ -1,9 +1,10 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #f4f7f6;
 }
 
 .contenedor-central {
@@ -13,9 +14,8 @@ body {
 
 aside {
   width: 20%;
-  background-color: #a3c1c1;
+  background-color: #34495e;
   padding: 20px;
-  border-right: 1px solid #000;
 }
 
 aside nav ul {
@@ -30,56 +30,75 @@ aside nav li {
 
 aside button {
   width: 100%;
-  border: 1px solid #000;
-  background: #d9e8e8;
+  border: none;
+  border-radius: 5px;
+  background: #4a6572;
+  color: #f4f7f6;
   padding: 10px 12px;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 0.3s ease,
+    transform 0.2s ease;
+}
+
+aside button:hover {
+  background-color: #5a7c8c;
+  transform: translateY(-2px);
 }
 
 main {
   width: 80%;
-  background-color: #d1e7f7;
+  background-color: #f4f7f6;
   padding: 20px;
 }
 
 header {
-  background-color: #bdbdbd;
-  padding: 10px;
-  border-bottom: 1px solid #000;
-  text-align: center;
-  overflow: auto;
+  background-color: #2c3e50;
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
 }
 
 header img {
   height: 50px;
-  float: left;
+  margin-right: 20px;
 }
 
 footer {
-  background-color: #d1e7f7;
+  background-color: #2c3e50;
+  color: white;
   text-align: right;
-  padding: 10px;
-  border-top: 1px solid #000;
+  padding: 15px 20px;
 }
 
 .sombra-basica {
-  color: brown;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 .sombra-neon {
-  color: #0073ff;
+  color: #00d9ff;
+  text-shadow:
+    0 0 5px #00d9ff,
+    0 0 10px #00d9ff,
+    0 0 15px #00d9ff;
 }
 .sombra-3d {
-  color: #444;
+  color: #333;
+  text-shadow:
+    1px 1px 0px #ccc,
+    2px 2px 0px #ccc,
+    3px 3px 0px #666;
 }
 
 .card {
-  background-color: #f0f0f0;
-  border: 2px solid #000;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   padding: 15px;
   margin-top: 20px;
-  font-family: Arial, Helvetica, sans-serif;
   text-align: justify;
 }
 
@@ -87,29 +106,10 @@ footer {
   margin: 0 0 10px 0;
   text-decoration: underline;
   color: #000;
+  font-size: 1.5em;
 }
 
 .card p {
-  margin: 5px 0;
-  font-size: 1.1em;
-}
-
-.card-api {
-  background-color: #f0f0f0;
-  border: 2px solid #000;
-  padding: 15px;
-  margin-top: 20px;
-  font-family: Arial, Helvetica, sans-serif;
-  text-align: justify;
-}
-
-.card-api h3 {
-  margin: 0 0 10px 0;
-  text-decoration: underline;
-  color: #000;
-}
-
-.card-api p {
   margin: 5px 0;
   font-size: 1.1em;
 }
