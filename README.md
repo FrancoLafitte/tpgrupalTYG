@@ -6,11 +6,11 @@
 
 ## Integrantes del grupo
 
-| Nombre y Apellido | Legajo |
-|---|---|
-| Franco Lafitte | 3XXXX |
-| Lautaro Eleno | 31779 |
-| Santiago Meccico | 3XXXX |
+| Nombre y Apellido |
+|---|
+| Franco Lafitte |
+| Lautaro Eleno |
+| Santiago Meccico |
 
 ## Problema asignado
 
