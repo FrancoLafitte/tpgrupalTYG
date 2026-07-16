@@ -2,7 +2,7 @@
 const API_KEY = "9e2d2514a392a374be14b36878fac089";
 const STRAPI_TOKEN =
   "8c457faa9e1976eda8492d0c470848626d5e7255008b189a8774819632c1e1c675acd69a6eaca57d7771e1c03e2b93b457f250d8007e6dcda81493b7199c7f76de93730cf2496417a057999bf78d10ddc89b11ecaa0e8787dc3abe97c79f69fde29cd958c93e7eb928419506215d60338d45ed8a9b71704b6c09a2050a64f86f";
-const URL_TMDB = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&first_air_date.gte=2020-01-01&language=es-ES&sort_by=popularity.desc&page=1`;
+const URL_TMDB = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&page=1`;
 const URL_TMDB_GENEROS = `https://api.themoviedb.org/3/genre/tv/list?api_key=${API_KEY}&language=es-ES`;
 const URL_STRAPI =
   "https://gestionweb.frlp.utn.edu.ar/api/g11-populares-series";
@@ -106,12 +106,7 @@ function obtenerPaisOrigen(serie) {
  */
 function valorPopularidad(item) {
   const valor =
-    item.popularidad ??
-    item.popularity ??
     item.votos ??
-    item.vote_count ??
-    item.promedioVotos ??
-    item.vote_average ??
     0;
   return Number(valor) || 0;
 }
@@ -132,27 +127,27 @@ function ordenarPorPopularidadDesc(items) {
 /**
  * Renderiza una lista de series en el contenedor principal de la página.
  * @param {string} titulo - El título que se mostrará sobre la lista.
- * @param {object[]} peliculas - La lista de series a mostrar.
+ * @param {object[]} series - La lista de series a mostrar.
  */
-function renderizarPeliculas(titulo, peliculas) {
+function renderizarSeries(titulo, series) {
   const contenedor = document.getElementById("contenido");
   contenedor.innerHTML = `<h2>${titulo}</h2>`;
 
-  if (!peliculas.length) {
+  if (!series.length) {
     contenedor.innerHTML += "<p>No se encontraron resultados.</p>";
     return;
   }
 
-  peliculas.forEach((pelicula) => {
+  series.forEach((serie) => {
     contenedor.innerHTML += `
             <div class="card">
-                <h3>${pelicula.titulo || pelicula.name || pelicula.title || "Sin título"}</h3>
-                <p><strong>Sinopsis:</strong> ${pelicula.sinopsis || pelicula.overview || pelicula.descripcion || "Sin descripción"}</p>
-                <p><strong>Fecha de estreno:</strong> ${pelicula.fechaEstreno || pelicula.first_air_date || pelicula.release_date || "N/A"}</p>
-                <p><strong>País de origen:</strong> ${pelicula.paisOrigen || pelicula.origin_country || "N/A"}</p>
-                <p><strong>Votos:</strong> ${pelicula.votos ?? pelicula.vote_count ?? pelicula.cantidadVotos ?? pelicula.catidad_de_votos ?? "N/A"}</p>
-                <p><strong>Promedio de votos:</strong> ${pelicula.promedioVotos ?? pelicula.vote_average ?? pelicula.promedio_votos ?? "N/A"}</p>
-                <p><strong>Géneros:</strong> ${pelicula.generos || "N/A"}</p>
+                <h3>${serie.titulo || "Sin título"}</h3>
+                <p><strong>Sinopsis:</strong> ${serie.sinopsis ||"Sin descripción"}</p>
+                <p><strong>Fecha de estreno:</strong> ${serie.fechaEstreno || "N/A"}</p>
+                <p><strong>País de origen:</strong> ${serie.paisOrigen || "N/A"}</p>
+                <p><strong>Votos:</strong> ${serie.votos ?? "N/A"}</p>
+                <p><strong>Promedio de votos:</strong> ${serie.promedioVotos ?? "N/A"}</p>
+                <p><strong>Géneros:</strong> ${serie.generos || "N/A"}</p>
             </div>
         `;
   });
@@ -231,43 +226,48 @@ async function obtenerSeriesTMDB() {
 }
 
 /**
+ * Elimina todas las series de la colección en Strapi.
+ */
+async function limpiarStrapi() {
+  // Primero obtenemos todas las series existentes
+  const respuesta = await fetch(`${URL_STRAPI}?pagination[pageSize]=100`, {
+    headers: strapiHeaders(),
+  });
+  
+  if (!respuesta.ok) throw new Error("No se pudieron listar las series para borrar.");
+  
+  const data = await respuesta.json();
+  const series = data.data || [];
+
+  // Borramos cada una por su ID
+  for (const serie of series) {
+    await fetch(`${URL_STRAPI}/${serie.documentId}`, {
+      method: "DELETE",
+      headers: strapiHeaders(),
+    });
+  }
+  return series.length;
+}
+
+/**
  * Guarda una lista de series en Strapi.
  * Envía una petición POST por cada serie de forma paralela.
  * @param {object[]} series - La lista de series a guardar.
  */
 async function guardarSeriesEnStrapi(series) {
   let guardadas = 0;
-  let actualizadas = 0;
 
-  const promesas = series.map(async (serie) => {
-    const serieExistente = await buscarSeriePorTitulo(serie.titulo);
+  for (const serie of series) {
+    const respuesta = await fetch(URL_STRAPI, {
+      method: "POST",
+      headers: strapiHeaders(),
+      body: JSON.stringify({ data: serie }),
+    });
 
-    if (serieExistente) {
-      // Si existe, actualizamos con PUT usando el ID
-      const respuesta = await fetch(`${URL_STRAPI}/${serieExistente.id}`, {
-        method: "PUT",
-        headers: strapiHeaders(),
-        body: JSON.stringify({ data: serie }),
-      });
-
-      if (respuesta.ok) actualizadas++;
-    } else {
-      // Si no existe, creamos con POST
-      const respuesta = await fetch(URL_STRAPI, {
-        method: "POST",
-        headers: strapiHeaders(),
-        body: JSON.stringify({ data: serie }),
-      });
-
-      if (respuesta.ok) guardadas++;
-    }
-  });
-
-  // Esperamos a que todas las operaciones asíncronas terminen
-  await Promise.all(promesas);
-
-  // Retornamos ambos contadores
-  return { guardadas, actualizadas };
+    if (respuesta.ok) guardadas++;
+  }
+  
+  return guardadas;
 }
 
 /**
@@ -276,12 +276,20 @@ async function guardarSeriesEnStrapi(series) {
  */
 async function cargarDatos() {
   try {
+    mostrarEstadoCarga("Procesando...", "Limpiando base de datos y cargando nuevas series...");
+    
+    // 1. Limpiamos Strapi primero
+    const eliminadas = await limpiarStrapi();
+    
+    // 2. Obtenemos las nuevas de TMDB
     const series = await obtenerSeriesTMDB();
-    const { guardadas, actualizadas } = await guardarSeriesEnStrapi(series);
+    
+    // 3. Guardamos las nuevas
+    const guardadas = await guardarSeriesEnStrapi(series);
 
     mostrarEstadoCarga(
       "Carga completada",
-      `Se crearon ${guardadas} series nuevas y se actualizaron ${actualizadas} series existentes en Strapi.`,
+      `Se cargaron las ${guardadas} series más populares.`
     );
   } catch (error) {
     console.error("Error al cargar los datos:", error);
@@ -319,7 +327,7 @@ async function visualizarDatos() {
       return;
     }
 
-    renderizarPeliculas("Series almacenadas en Strapi", series.slice(0, 10));
+    renderizarSeries("Series almacenadas en Strapi", series.slice(0, 10));
   } catch (error) {
     console.error("Error al visualizar los datos:", error);
     document.getElementById("contenido").innerHTML =

@@ -78,7 +78,6 @@ No hay servidor propio: todo corre client-side. El navegador hace las peticiones
 **Autenticación:** mediante `api_key` como query param en la URL.
 
 **Parámetros clave utilizados:**
-- `first_air_date.gte=2020-01-01`: solo series estrenadas desde 2020
 - `language=es-ES`: contenido en español
 - `sort_by=popularity.desc`: orden por popularidad
 - `page=1`: primera página de resultados
